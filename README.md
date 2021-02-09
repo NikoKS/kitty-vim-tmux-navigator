@@ -1,82 +1,62 @@
-Vim Kitty Navigator
+Kitty Vim Tmux Navigator
 ==================
 
-This plugin is a port of [Chris Toomey's vim-tmux-navigator](https://github.com/christoomey/vim-tmux-navigator) plugin. When combined with a set of kitty
-key bindings and kittens, the plugin will allow you to navigate seamlessly between vim and kitty splits using a consistent set of hotkeys.
+This plugin is a fork from [vim-kitty-navigator](https://github.com/knubie/vim-kitty-navigator) extending it's capabilities to also work with tmux pane navigation. The aim is to make navigation between Kitty windows, tmux panes, and vim splits seamless. With some extra configuration, kitty-tmux navigation works even through SSH!
 
-**NOTE**: This requires kitty v0.13.1 or higher.
+**NOTE**:
+- This requires kitty v0.13.1 or higher.
+- Requires newer version of tmux with 'pane_at_*' format feature. (Not sure which version, but tested tmux 2.1 and didn't work)
+- Works only 2 nested layer deep. So navigation for vim splits inside tmux inside kitty is not supported.
 
 Usage
 -----
 
 This plugin provides the following mappings which allow you to move between
-Vim panes and kitty splits seamlessly.
+Vim splits, tmux panes, and kitty window seamlessly.
 
 - `<ctrl-h>` => Left
 - `<ctrl-j>` => Down
 - `<ctrl-k>` => Up
 - `<ctrl-l>` => Right
 
-If you want to use alternate key mappings, see the [configuration section
-below][].
-
 Installation
 ------------
 
-### Vim
+### VIM
 
-If you don't have a preferred installation method, I recommend using [vim-plug](https://github.com/junegunn/vim-plug).
-Assuming you have `vim-plug` installed and configured, the following steps will
-install the plugin:
-
-Add the following line to your `~/.vimrc` file
-
-``` vim
-Plug 'knubie/vim-kitty-navigator'
+Use your favorite plugin manager and add the following repo to your plugin list
+```vim
+'NikoKS/kitty-vim-tmux-navigator'
 ```
+And then run the plugin installation function
 
-Then run
+### KITTY
 
-```
-:PlugInstall
-```
+To configure kitty, do the following steps:
 
-### kitty
+1. Copy both `pass_keys.py` and `neighboring_window.py` kittens to the `~/.config/kitty/`.
 
-To configure the kitty side of this customization there are three parts:
-
-#### Add `pass_keys.py` and `neighboring_window.py` kittens
-
-Move both `pass_keys.py` and `neighboring_window.py` kittens to the `~/.config/kitty/`.
-
-#### Add this snippet to kitty.conf
-
-Add the following to your `~/.config/kitty/kitty.conf` file:
+2. Add the following to your `~/.config/kitty/kitty.conf` file:
 
 ```conf
-map ctrl+j kitten pass_keys.py neighboring_window bottom ctrl+j
-map ctrl+k kitten pass_keys.py neighboring_window top    ctrl+k
-map ctrl+h kitten pass_keys.py neighboring_window left   ctrl+h
-map ctrl+l kitten pass_keys.py neighboring_window right  ctrl+l
+map ctrl+j kitten pass_keys.py bottom ctrl+j
+map ctrl+k kitten pass_keys.py top    ctrl+k
+map ctrl+h kitten pass_keys.py left   ctrl+h
+map ctrl+l kitten pass_keys.py right  ctrl+l
 ```
 
-`vim-kitty-navigator` uses the window title to detect when it is in a (neo)vim session or not, so if you have a non-standard title set for vim, for example using
+`kitty-vim-tmux-navigator` changes `vim-kitty-navigator` vim detection method from using title name to running foreground process name. So it removes the capability to change title regex.
 
-```viml
-set title
-let &titlestring='%t - nvim'
-```
+3. Enable kitty `allow_remote_control` and `listen_on` option:
 
-You can set fourth optional regex argument to the `pass_keys.py` call in your `kitty.conf` file to match the title.
+Set it on the `~/.config/kitty/kitty.conf` file:
 
 ```conf
-map ctrl+j kitten pass_keys.py neighboring_window bottom ctrl+j "^.* - nvim$"
-map ctrl+k kitten pass_keys.py neighboring_window top    ctrl+k "^.* - nvim$"
-map ctrl+h kitten pass_keys.py neighboring_window left   ctrl+h "^.* - nvim$"
-map ctrl+l kitten pass_keys.py neighboring_window right  ctrl+l "^.* - nvim$"
+allow_remote_control yes
+listen_on unix:/tmp/mykitty
 ```
 
-#### Make kitty listen to control messages
+**OR**
 
 Start kitty with the `listen_on` option so that vim can send commands to it.
 
@@ -86,29 +66,75 @@ kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty
 
 The listening address can be customized in your vimrc by setting `g:kitty_navigator_listening_on_address`. It defaults to `unix:/tmp/mykitty`.
 
-Configuration
--------------
+### TMUX
 
-### Custom Key Bindings
+If you're using [TPM](https://github.com/tmux-plugins/tpm), just add this snippet to your tmux.conf:
 
-If you don't want the plugin to create any mappings, you can use the five
-provided functions to define your own custom maps. You will need to define
-custom mappings in your `~/.vimrc` as well as update the bindings in kitty to
-match.
-
-#### Vim
-
-Add the following to your `~/.vimrc` to define your custom maps:
-
-``` vim
-let g:kitty_navigator_no_mappings = 1
-
-nnoremap <silent> {Left-Mapping} :KittyNavigateLeft<cr>
-nnoremap <silent> {Down-Mapping} :KittyNavigateDown<cr>
-nnoremap <silent> {Up-Mapping} :KittyNavigateUp<cr>
-nnoremap <silent> {Right-Mapping} :KittyNavigateRight<cr>
+```conf
+set -g @plugin 'NikoKS/kitty-vim-tmux-navigator'
 ```
 
-*Note* Each instance of `{Left-Mapping}` or `{Down-Mapping}` must be replaced
-in the above code with the desired mapping. Ie, the mapping for `<ctrl-h>` =>
-Left would be created with `nnoremap <silent> <c-h> :KittyNavigateLeft<cr>`.
+And update your plugin
+
+**Otherwise**
+
+Add the following snippet to your tmux.conf:
+
+```conf
+# SSH aware kitty change window
+if-shell '[ $SSH_TTY ]' 'to="--to=tcp:localhost:$KITTY_PORT "' 'to=""'
+move='kitty @ ${to}kitten neighboring_window.py'
+
+# Key Binds
+bind-key -n 'C-h' if-shell "[ #{pane_at_left} != 1 ]" "select-pane -L" "run-shell '$move left'"
+bind-key -n 'C-j' if-shell "[ #{pane_at_bottom} != 1 ]" "select-pane -D" "run-shell '$move bottom'"
+bind-key -n 'C-k' if-shell "[ #{pane_at_top} != 1 ]" "select-pane -U" "run-shell '$move top'"
+bind-key -n 'C-l' if-shell "[ #{pane_at_right} != 1 ]" "select-pane -R" "run-shell '$move right'"
+```
+
+SSH Compatibility
+-----------------
+
+With the settings above, navigation should work well locally. But if you need kitty-tmux navigation also work through ssh, follow steps below:
+
+1. Install kitty on your remote machine. [How To](https://sw.kovidgoyal.net/kitty/binary.html?highlight=install).
+With kitty installed on your remote system and remote control enabled, you should be able to use remote control from ssh. But because of reasons explained [here](https://github.com/kovidgoyal/kitty/issues/2338), it won't work from inside tmux. So we're going to need some workarounds.
+
+2. Set remote port forwarding when using SSH.
+
+```
+ssh -R 50000:${KITTY_LISTEN_ON#*:} user@host
+```
+
+The remote TCP port 50000 can be changed to anything depending on your needs.
+
+You can put it as an alias on your shell rc file so you don't type it all the time.
+
+```
+alias ssh='ssh -R 50000:${KITTY_LISTEN_ON#*:}'
+```
+
+3. Add the following snippet to your remote machine's `.bashrc` or something similar on other shell:
+
+```sh
+# Source kitty binary
+export PATH=$PATH:~/.local/kitty.app/bin/
+
+# Set KITTY_PORT env variable
+if [[ $SSH_TTY ]] && ! [ -n "$TMUX" ]; then
+  export KITTY_PORT=`kitty @ ls 2>/dev/null | grep "[0-9]:/tmp/mykitty" | head -n 1 | cut -d : -f 1 | cut -d \" -f 2`
+fi
+
+# Kitty Terminal Navigation
+bind -x '"\C-h": kitty @ kitten neighboring_window.py left'
+bind -x '"\C-j": kitty @ kitten neighboring_window.py top'
+bind -x '"\C-k": kitty @ kitten neighboring_window.py bottom'
+bind -x '"\C-l": kitty @ kitten neighboring_window.py right'
+```
+
+**Explanation**:
+- Source kitty path so the binary can be called from anywhere
+- Set the KITTY_PORT environment variable automatically from the foreground process that call ssh.
+- Set terminal key binding for changing kitty window when not using tmux
+
+4. Don't forget to install the tmux plugin on your remote system also.
