@@ -38,7 +38,7 @@ To configure kitty, do the following steps:
 
 2. Add the following to your `~/.config/kitty/kitty.conf` file:
 
-```conf
+```sh
 map ctrl+j kitten pass_keys.py bottom ctrl+j
 map ctrl+k kitten pass_keys.py top    ctrl+k
 map ctrl+h kitten pass_keys.py left   ctrl+h
@@ -80,7 +80,7 @@ And update your plugin
 
 Add the following snippet to your tmux.conf:
 
-```conf
+```sh
 # SSH aware kitty change window
 if-shell '[ $SSH_TTY ]' 'to="--to=tcp:localhost:$KITTY_PORT "' 'to=""'
 move='kitty @ ${to}kitten neighboring_window.py'
@@ -102,7 +102,7 @@ With kitty installed on your remote system and remote control enabled, you shoul
 
 2. Set remote port forwarding when using SSH.
 
-```
+```sh
 ssh -R 50000:${KITTY_LISTEN_ON#*:} user@host
 ```
 
@@ -110,7 +110,7 @@ The remote TCP port 50000 can be changed to anything depending on your needs.
 
 You can put it as an alias on your shell rc file so you don't type it all the time.
 
-```
+```sh
 alias ssh='ssh -R 50000:${KITTY_LISTEN_ON#*:}'
 ```
 
@@ -132,7 +132,7 @@ bind -x '"\C-k": kitty @ kitten neighboring_window.py bottom'
 bind -x '"\C-l": kitty @ kitten neighboring_window.py right'
 ```
 
-**Explanation**:
+  **Explanation**:
 - Source kitty path so the binary can be called from anywhere
 - Set the KITTY_PORT environment variable automatically from the foreground process that call ssh.
 - Set terminal key binding for changing kitty window when not using tmux
