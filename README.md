@@ -137,4 +137,4 @@ bind -x '"\C-l": kitty @ kitten neighboring_window.py right'
 - Set the KITTY_PORT environment variable automatically from the foreground process that call ssh.
 - Set terminal key binding for changing kitty window when not using tmux
 
-4. Don't forget to install the tmux plugin on your remote system also.
+4. Don't forget to install the tmux plugin on your remote system also. And copy `neighboring_window.py` to your remote machine ~/.config/kitty directory.
